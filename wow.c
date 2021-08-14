@@ -16,6 +16,7 @@
 int init(int w, int h, int argc, char *args[]);
 
 //Structures
+/*
 typedef struct disabled_blocks {
     
     int posx, posy;
@@ -27,6 +28,26 @@ static disabled_b blocks_level1[9];
 static disabled_b blocks_level2[9];
 static disabled_b blocks_level3[9];
 
+*/
+
+typedef struct player_s {
+    
+    int posx, posy;     // position in game board
+    int w, h;           // player image dimensions
+    int lives, points; 
+    int direction;      // needed to control the player image and shooting
+    /* Diretions:
+    0 = up
+    1 = right
+    2 = down
+    3 = left
+    */
+} player_t;
+
+
+// Program globals
+
+static player_t player;
 
 SDL_Window* window = NULL;	//The window we'll be rendering to
 SDL_Renderer *renderer;		//The renderer SDL will use to draw to the screen
@@ -34,6 +55,7 @@ SDL_Renderer *renderer;		//The renderer SDL will use to draw to the screen
 //surfaces
 static SDL_Surface *screen;
 static SDL_Surface *title;
+static SDL_Surface *player_image;
 
 //textures
 SDL_Texture *screen_texture;
@@ -92,16 +114,22 @@ static int is_disabled_block(int level, int posx, int posy) {
 
 static void draw_board(int level) {
 
-    SDL_Rect border;
+    SDL_Rect board, border;
 
-    border.x = (screen->w/2) - (BOARD_WIDTH/2);
-    border.y = (screen->h/3) - (BOARD_HEIGHT/2);
-    border.w = BOARD_WIDTH;
-    border.h = BOARD_HEIGHT;
+    board.x = (screen->w/2) - (BOARD_WIDTH/2);
+    board.y = (screen->h/3) - (BOARD_HEIGHT/2);
+    board.w = BOARD_WIDTH;
+    board.h = BOARD_HEIGHT;
 
-    int r = SDL_FillRect(screen, &border, 0xffffffff);
+    border.x = board.x - 10;
+    border.y = board.y - 10;
+    border.w = board.w + 20;
+    border.h = board.h + 20;
+
+    int r_2 = SDL_FillRect(screen, &border, SDL_MapRGB(screen->format, 143, 143, 143));
+    int r_1 = SDL_FillRect(screen, &board, SDL_MapRGB(screen->format, 0, 0, 0));
 		
-    if (r !=0){
+    if (r_1 !=0 || r_2 != 0){
     
         printf("fill rectangle failed in func draw_board()");
     }
@@ -116,12 +144,12 @@ static void draw_board(int level) {
             
             if (is_disabled_block(level, i, j)) {
 
-                src.x = border.x + (BOARD_WIDTH/BOARD_DIM)*i;
-                src.y = border.y + (BOARD_HEIGHT/BOARD_DIM)*j;
+                src.x = board.x + (BOARD_WIDTH/BOARD_DIM)*i;
+                src.y = board.y + (BOARD_HEIGHT/BOARD_DIM)*j;
                 src.w = BOARD_WIDTH/BOARD_DIM;
                 src.h = BOARD_HEIGHT/BOARD_DIM;
 
-                int color = SDL_FillRect(screen, &src, 0x0000);
+                int color = SDL_FillRect(screen, &src, SDL_MapRGB(screen->format, 143, 143, 143));
             }
         }
     }
@@ -147,6 +175,111 @@ static void draw_menu() {
 	SDL_BlitSurface(title, &src, screen, &dest);
 }
 
+static void move_player(int d) {
+
+    if (d == 0) {
+
+        if (player.direction == 0) {
+            // code
+            // Change player position ..
+        } else {
+
+            player.direction = 0;
+        }
+    }
+
+    if (d == 1) {
+
+        if (player.direction == 1) {
+            // code
+            // Change player position ..
+        } else {
+            
+            player.direction = 1;
+        }
+    }
+
+    if (d == 2) {
+
+        if (player.direction == 2) {
+            // code
+            // Change player position ..
+        } else {
+            
+            player.direction = 2;
+        }
+    }
+
+    if (d == 3) {
+
+        if (player.direction == 3) {
+            // code
+            // Change player position ..
+        } else {
+            
+            player.direction = 3;
+        }
+    }
+}
+
+static void draw_player() {
+
+    SDL_Rect src;
+    SDL_Rect dest;
+
+    src.x = 0;
+    src.y = 0;
+    src.w = player_image->w;
+    src.h = player_image->h;
+
+    int board_corner_posx = (screen->w/2) - (BOARD_WIDTH/2);
+    int board_corner_posy = (screen->h/3) - (BOARD_HEIGHT/2);
+    dest.x = board_corner_posx + (BOARD_WIDTH/BOARD_DIM) * player.posx;
+    dest.y = board_corner_posy + (BOARD_WIDTH/BOARD_DIM) * player.posy;
+    dest.w = player.w;
+    dest.h = player.h;
+
+    switch (player.direction) {
+
+        case 0:
+            player_image = SDL_LoadBMP("player_up.bmp");
+            break;
+
+        case 1:
+            player_image = SDL_LoadBMP("player_right.bmp");
+            break;
+        
+        case 2:
+            player_image = SDL_LoadBMP("player_down.bmp");
+            break;
+
+        case 3:
+            player_image = SDL_LoadBMP("player_left.bmp");
+            break;
+
+    }
+
+    if (player_image == NULL) {
+
+        printf("Could not load the player image! SDL_Error: %s\n", SDL_GetError());
+    }
+
+    SDL_BlitSurface(player_image, &src, screen, &dest);
+}
+
+static void init_game() {
+
+    // Initialize player constants
+    player.posx = 0;
+    player.posy = 0;
+    player.w = 50;
+    player.h = 50;
+    player.lives = 3;
+    player.points = 0;
+    player.direction = 1;
+
+}
+
 int main (int argc, char *args[]){
 
     //SDL Window setup
@@ -160,6 +293,9 @@ int main (int argc, char *args[]){
     int sleep = 0;
     Uint32 next_game_tick = SDL_GetTicks();
 
+    // Initialize player position
+    init_game();
+
     while (quit == 0)
     {
         //check for new events every frame
@@ -171,10 +307,30 @@ int main (int argc, char *args[]){
 		
 			quit = 1;
 		}
+
+        if (keystate[SDL_SCANCODE_W]) {
+
+            move_player(0); // move player up
+        }
+
+        if (keystate[SDL_SCANCODE_D]) {
+
+            move_player(1); // move player right
+        }
+
+        if (keystate[SDL_SCANCODE_S]) {
+
+            move_player(2); // move player down
+        }
+
+        if (keystate[SDL_SCANCODE_A]) {
+
+            move_player(3); // move player left
+        }
         
         //draw background
 		SDL_RenderClear(renderer);
-		SDL_FillRect(screen, NULL, 0x000000ff);
+		SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0, 0, 0));
 
         //display main menu
         if (state == 0){
@@ -188,7 +344,13 @@ int main (int argc, char *args[]){
         // display the game
         } else if (state = 1){
 
+            // draw game board
             draw_board(3);
+
+            // draw player
+            draw_player();
+
+
 
         }
 
@@ -286,6 +448,14 @@ int init(int width, int height, int argc, char *args[]) {
 
 		return 1;
 	}
+
+    // Load the player left image
+    player_image = SDL_LoadBMP("player_right.bmp");
+
+    if (player_image == NULL) {
+
+        printf("Could not load the player right image! SDL_Error: %s\n", SDL_GetError());
+    }
 
     // ...
     // Code to load images
