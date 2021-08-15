@@ -46,6 +46,8 @@ static SDL_Surface *screen;
 static SDL_Surface *title;
 static SDL_Surface *player_image;
 static SDL_Surface *lives;
+static SDL_Surface *level_image;
+static SDL_Surface *killed_enemies;
 static SDL_Surface *numbermap;
 
 //textures
@@ -227,6 +229,83 @@ static void draw_player_lives() {
 	SDL_BlitSurface(numbermap, &src_num, screen, &dest_num);
 }
 
+static void draw_level() {
+
+    SDL_Rect src;
+	SDL_Rect dest;
+
+	src.x = 0;
+	src.y = 0;
+	src.w = level_image->w;
+	src.h = level_image->h;
+
+	dest.x = 1*screen->w/4;
+	dest.y = 3*screen->h/4;
+	dest.w = level_image->w;
+	dest.h = level_image->h;
+
+	SDL_BlitSurface(level_image, &src, screen, &dest);
+
+    SDL_Rect src_num;
+	SDL_Rect dest_num;
+
+	src_num.x = 0;
+	src_num.y = 0;
+	src_num.w = 64;
+	src_num.h = 64;
+
+	dest_num.x = 1*screen->w/4;
+	dest_num.y = 3*screen->h/4 + killed_enemies->h;
+	dest_num.w = 64;
+	dest_num.h = 64;
+
+	if (level > 0 && level < 10) {
+		
+		src_num.x += src_num.w * level;
+	}
+	
+	SDL_BlitSurface(numbermap, &src_num, screen, &dest_num);
+}
+
+static void draw_killed_enemies() {
+
+    SDL_Rect src;
+	SDL_Rect dest;
+
+	src.x = 0;
+	src.y = 0;
+	src.w = killed_enemies->w;
+	src.h = killed_enemies->h;
+
+	dest.x = 1*screen->w/8;
+	dest.y = 3*screen->h/4;
+	dest.w = killed_enemies->w;
+	dest.h = killed_enemies->h;
+
+	SDL_BlitSurface(killed_enemies, &src, screen, &dest);
+
+    SDL_Rect src_num;
+	SDL_Rect dest_num;
+
+	src_num.x = 0;
+	src_num.y = 0;
+	src_num.w = 64;
+	src_num.h = 64;
+
+	dest_num.x = 1*screen->w/8;
+	dest_num.y = 3*screen->h/4 + killed_enemies->h;
+	dest_num.w = 64;
+	dest_num.h = 64;
+
+	if (player.points > 0 && player.points < 10) {
+		
+		src_num.x += src_num.w * player.points;
+	}
+	
+	SDL_BlitSurface(numbermap, &src_num, screen, &dest_num);
+
+}
+
 /*
 Description: a function that loads the menu image.
 */
@@ -387,7 +466,7 @@ static void init_game() {
     player.direction = 1;
 
     // Initial level
-    level = 3;
+    level = 1;
 
 }
 
@@ -466,6 +545,12 @@ int main (int argc, char *args[]){
 
             // draw lives count
             draw_player_lives();
+
+            // draw level count
+            draw_level();
+
+            // draw killed enemies count
+            draw_killed_enemies();
 
         }
 
@@ -581,9 +666,21 @@ int init(int width, int height, int argc, char *args[]) {
         printf("Could not load the numbermap image! SDL_Error: %s\n", SDL_GetError());
     }
 
-    // ...
-    // Code to load images
-    // ...
+    // load level 
+    level_image = SDL_LoadBMP("level.bmp");
+
+    if (level_image == NULL) {
+
+        printf("Could not load the level image! SDL_Error: %s\n", SDL_GetError());
+    }
+
+    // load killed_enemies
+    killed_enemies = SDL_LoadBMP("killed_enemies.bmp");
+
+    if (killed_enemies == NULL) {
+
+        printf("Could not load the killed_enemies image! SDL_Error: %s\n", SDL_GetError());
+    }
 
     // Set the title colourkey. 
 	Uint32 colorkey = SDL_MapRGB(title->format, 255, 0, 255);
