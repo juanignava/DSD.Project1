@@ -9,26 +9,15 @@
 #define BOARD_WIDTH SCREEN_WIDTH*0.5
 #define BOARD_HEIGHT BOARD_WIDTH
 
+#define RADAR_WIDTH SCREEN_WIDTH*0.2
+#define RADAR_HEIGHT RADAR_WIDTH
+
 #define BOARD_DIM 11
+#define FRAME_TIME 200
 
 //function prototypes
 //initilise SDL
 int init(int w, int h, int argc, char *args[]);
-
-//Structures
-/*
-typedef struct disabled_blocks {
-    
-    int posx, posy;
-} disabled_b;
-
-
-// Program globals
-static disabled_b blocks_level1[9];
-static disabled_b blocks_level2[9];
-static disabled_b blocks_level3[9];
-
-*/
 
 typedef struct player_s {
     
@@ -46,8 +35,8 @@ typedef struct player_s {
 
 
 // Program globals
-
 static player_t player;
+int level;
 
 SDL_Window* window = NULL;	//The window we'll be rendering to
 SDL_Renderer *renderer;		//The renderer SDL will use to draw to the screen
@@ -56,11 +45,21 @@ SDL_Renderer *renderer;		//The renderer SDL will use to draw to the screen
 static SDL_Surface *screen;
 static SDL_Surface *title;
 static SDL_Surface *player_image;
+static SDL_Surface *lives;
+static SDL_Surface *numbermap;
 
 //textures
 SDL_Texture *screen_texture;
 
-static int is_disabled_block(int level, int posx, int posy) {
+/*
+Description: determines if a given position on the board is disables for player
+and enemies (used currently by walls)
+
+Inputs: posx, posy: coordinates os the searched position.
+
+Output: 1 if the given position corresponds to a wall and 0 if not.
+*/
+static int is_disabled_block(int posx, int posy) {
     if (level == 1) {
 
         if ( (posx == 1 && (posy == 1 || posy == 2 || posy == 3 || posy == 4 || posy == 5 || posy == 7)) ||
@@ -112,7 +111,11 @@ static int is_disabled_block(int level, int posx, int posy) {
     return 0;
 }
 
-static void draw_board(int level) {
+/*
+Description: A function that draws the game board once it begins, it draws a diffent
+one depending on the level
+*/
+static void draw_board() {
 
     SDL_Rect board, border;
 
@@ -142,7 +145,7 @@ static void draw_board(int level) {
 
         for (j = 0; j < BOARD_DIM; j++) {
             
-            if (is_disabled_block(level, i, j)) {
+            if (is_disabled_block(i, j)) {
 
                 src.x = board.x + (BOARD_WIDTH/BOARD_DIM)*i;
                 src.y = board.y + (BOARD_HEIGHT/BOARD_DIM)*j;
@@ -153,10 +156,80 @@ static void draw_board(int level) {
             }
         }
     }
-    
 
 }
 
+/*
+Description: function that draws the radar box and enemy positions
+*/
+static void draw_radar() {
+
+    SDL_Rect radar, radar_border;
+
+    radar.x = (screen->w/2) - (RADAR_WIDTH/2);
+    radar.y = (5*screen->h/6) - (RADAR_HEIGHT/2);
+    radar.w = RADAR_WIDTH;
+    radar.h = RADAR_HEIGHT;
+
+    radar_border.x = (screen->w/2) - (RADAR_WIDTH/2) - 10;
+    radar_border.y = (5*screen->h/6) - (RADAR_HEIGHT/2) - 10;
+    radar_border.w = RADAR_WIDTH + 20;
+    radar_border.h = RADAR_HEIGHT + 20;
+
+    int r_1 = SDL_FillRect(screen, &radar_border, SDL_MapRGB(screen->format, 143, 143, 143));
+    int r_2 = SDL_FillRect(screen, &radar, SDL_MapRGB(screen->format, 0, 0, 0));
+
+    if (r_1 != 0 || r_2 != 0) {
+
+        printf("fill rectangle failed in func draw_radar()");
+    }
+
+}
+
+/*
+Description: function that draws the player's amount of lives
+*/
+static void draw_player_lives() {
+
+    SDL_Rect src;
+	SDL_Rect dest;
+
+	src.x = 0;
+	src.y = 0;
+	src.w = lives->w;
+	src.h = lives->h;
+
+	dest.x = 3*screen->w/4;
+	dest.y = 3*screen->h/4;
+	dest.w = lives->w;
+	dest.h = lives->h;
+
+	SDL_BlitSurface(lives, &src, screen, &dest);
+
+    SDL_Rect src_num;
+	SDL_Rect dest_num;
+
+	src_num.x = 0;
+	src_num.y = 0;
+	src_num.w = 64;
+	src_num.h = 64;
+
+	dest_num.x = 3*screen->w/4;
+	dest_num.y = 3*screen->h/4 + lives->h;
+	dest_num.w = 64;
+	dest_num.h = 64;
+
+	if (player.lives > 0 && player.lives < 10) {
+		
+		src_num.x += src_num.w * player.lives;
+	}
+	
+	SDL_BlitSurface(numbermap, &src_num, screen, &dest_num);
+}
+
+/*
+Description: a function that loads the menu image.
+*/
 static void draw_menu() {
 
 	SDL_Rect src;
@@ -175,46 +248,73 @@ static void draw_menu() {
 	SDL_BlitSurface(title, &src, screen, &dest);
 }
 
+/*
+Description: this function changes the player's position or orientation,
+depending on direction chosen by the player.
+
+Input: d -> direction chosen by the player, where 0 = up, 1 = right, 
+2 = down and 3 = left.
+*/
 static void move_player(int d) {
 
+    // moving up
     if (d == 0) {
 
         if (player.direction == 0) {
-            // code
-            // Change player position ..
+            
+            if (player.posy-1 >= 0 && 
+                !is_disabled_block(player.posx, player.posy-1)) {
+
+                player.posy -= 1;
+            }
         } else {
 
             player.direction = 0;
         }
     }
 
+    // moving right
     if (d == 1) {
 
         if (player.direction == 1) {
-            // code
-            // Change player position ..
+            
+            if (player.posx+1 < BOARD_DIM && 
+                !is_disabled_block(player.posx+1, player.posy)) {
+
+                player.posx += 1;
+            }
         } else {
             
             player.direction = 1;
         }
     }
 
+    // moving down
     if (d == 2) {
 
         if (player.direction == 2) {
-            // code
-            // Change player position ..
+            
+            if (player.posy+1 < BOARD_DIM && 
+                !is_disabled_block(player.posx, player.posy+1)) {
+
+                player.posy += 1;
+            }
         } else {
             
             player.direction = 2;
         }
     }
 
+    // moving left
     if (d == 3) {
 
         if (player.direction == 3) {
-            // code
-            // Change player position ..
+            
+            if (player.posx-1 >= 0 && 
+                !is_disabled_block(player.posx-1, player.posy)) {
+
+                player.posx -= 1;
+            }
         } else {
             
             player.direction = 3;
@@ -222,6 +322,10 @@ static void move_player(int d) {
     }
 }
 
+/*
+Description: This function displays the player image in the screen wiht the current
+position and direction.
+*/
 static void draw_player() {
 
     SDL_Rect src;
@@ -239,6 +343,7 @@ static void draw_player() {
     dest.w = player.w;
     dest.h = player.h;
 
+    // The player image depends on the current direction
     switch (player.direction) {
 
         case 0:
@@ -267,6 +372,9 @@ static void draw_player() {
     SDL_BlitSurface(player_image, &src, screen, &dest);
 }
 
+/*
+Description: Function that initializes the main variables in the game
+*/
 static void init_game() {
 
     // Initialize player constants
@@ -277,6 +385,9 @@ static void init_game() {
     player.lives = 3;
     player.points = 0;
     player.direction = 1;
+
+    // Initial level
+    level = 3;
 
 }
 
@@ -345,12 +456,16 @@ int main (int argc, char *args[]){
         } else if (state = 1){
 
             // draw game board
-            draw_board(3);
+            draw_board();
+
+            // draw the game radar
+            draw_radar();
 
             // draw player
             draw_player();
 
-
+            // draw lives count
+            draw_player_lives();
 
         }
 
@@ -360,14 +475,7 @@ int main (int argc, char *args[]){
 		//draw to the display
 		SDL_RenderPresent(renderer);
 
-        //time it takes to render  frame in milliseconds
-		next_game_tick += 1000 / 60;
-		sleep = next_game_tick - SDL_GetTicks();
-	
-		if( sleep >= 0 ) {
-            				
-			SDL_Delay(sleep);
-		}
+		SDL_Delay(FRAME_TIME);
     }
     
     //free loaded images
@@ -457,8 +565,27 @@ int init(int width, int height, int argc, char *args[]) {
         printf("Could not load the player right image! SDL_Error: %s\n", SDL_GetError());
     }
 
+    // load de lives image
+    lives = SDL_LoadBMP("lives.bmp");
+
+    if (lives == NULL) {
+
+        printf("Could not load the lives image! SDL_Error: %s\n", SDL_GetError());
+    }
+
+    // load numbermap
+    numbermap = SDL_LoadBMP("numbermap.bmp");
+
+    if (lives == NULL) {
+
+        printf("Could not load the numbermap image! SDL_Error: %s\n", SDL_GetError());
+    }
+
     // ...
     // Code to load images
     // ...
 
+    // Set the title colourkey. 
+	Uint32 colorkey = SDL_MapRGB(title->format, 255, 0, 255);
+    SDL_SetColorKey(numbermap, SDL_TRUE, colorkey);
 }
