@@ -2,6 +2,7 @@
 #include <SDL.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <pthread.h>
 
 #define SCREEN_WIDTH 1100    //window height
 #define SCREEN_HEIGHT SCREEN_WIDTH*0.8  //window width
@@ -14,6 +15,8 @@
 
 #define BOARD_DIM 11
 #define FRAME_TIME 200
+
+#define MAXIMUM_BULLETS 10
 
 //function prototypes
 //initilise SDL
@@ -33,10 +36,16 @@ typedef struct player_s {
     */
 } player_t;
 
+typedef struct  bullet_s {
+
+    int posx, posy, active;
+} bullet_t;
+
 
 // Program globals
 static player_t player;
 int level;
+static bullet_t bullet[MAXIMUM_BULLETS];
 
 SDL_Window* window = NULL;	//The window we'll be rendering to
 SDL_Renderer *renderer;		//The renderer SDL will use to draw to the screen
@@ -422,6 +431,82 @@ static void move_player(int d) {
     }
 }
 
+static void draw_bullet(int posx, int posy) {
+
+    SDL_Rect src;
+
+    int initial_x = (screen->w/2) - (BOARD_WIDTH/2);
+    int initial_y  = (screen->h/3) - (BOARD_HEIGHT/2);
+
+    src.x = initial_x + (BOARD_WIDTH/BOARD_DIM)*posx + (BOARD_WIDTH/BOARD_DIM)/3;
+    src.y = initial_y + (BOARD_HEIGHT/BOARD_DIM)*posy + (BOARD_HEIGHT/BOARD_DIM)/3;
+    src.w = (BOARD_WIDTH/BOARD_DIM)/3;
+    src.h = (BOARD_HEIGHT/BOARD_DIM)/3;
+
+    int color = SDL_FillRect(screen, &src, SDL_MapRGB(screen->format, 250, 0, 0));
+
+    if (color != 0) {
+
+        printf("fill rectangle failed in func draw_radar()");
+    }
+
+}
+
+static void shoot_recursion(int bullet_number, int dir, int posx, int posy) {
+
+    switch (dir) {
+
+    case 0:
+        posy-=1;
+        break;
+
+    case 1:
+        posx+=1;
+        break;
+
+    case 2:
+        posy+=1;
+        break;
+
+    case 3:
+        posx-=1;
+        break;
+    }
+
+    if (posy >= 0 && posy < BOARD_DIM && posx >= 0 && posx < BOARD_DIM) {
+
+        if (!is_disabled_block(posx, posy)) {
+
+            bullet[bullet_number].posx = posx;
+            bullet[bullet_number].posy = posy;
+            
+            //draw_bullet(posx, posy);
+            SDL_Delay(FRAME_TIME);
+            shoot_recursion(bullet_number, dir, posx, posy);
+        }
+        else {
+            bullet[bullet_number].active = 0;
+        }
+    } else {
+        bullet[bullet_number].active = 0;
+    }
+}
+
+void *shoot(void *vargp) {
+
+    for (int i = 0; i < MAXIMUM_BULLETS; i++)
+    {
+        if (!bullet[i].active)
+        {
+            bullet[i].active = 1;
+            shoot_recursion(i, player.direction, player.posx, player.posy);
+            break;
+        }
+        
+    }
+   
+}
+
 /*
 Description: This function displays the player image in the screen wiht the current
 position and direction.
@@ -489,6 +574,11 @@ static void init_game() {
     // Initial level
     level = 2;
 
+    bullet[0].active = 0;
+    bullet[1].active = 0;
+    bullet[2].active = 0;
+    bullet[3].active = 0;
+
 }
 
 int main (int argc, char *args[]){
@@ -538,16 +628,25 @@ int main (int argc, char *args[]){
 
             move_player(3); // move player left
         }
+
+        if (keystate[SDL_SCANCODE_P]) {
+            
+            pthread_t shoot_thread;
+            pthread_create(&shoot_thread, NULL, shoot, NULL); // player shoots
+        }
+        
         
         //draw background
 		SDL_RenderClear(renderer);
 		SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0, 0, 0));
+        
 
         //display main menu
         if (state == 0){
 
             if (keystate[SDL_SCANCODE_SPACE]){
                 state = 1;
+
             }
 
             draw_menu();
@@ -572,6 +671,16 @@ int main (int argc, char *args[]){
 
             // draw killed enemies count
             draw_killed_enemies();
+
+            // daw bullet
+            for (int i = 0; i < MAXIMUM_BULLETS; i++)
+            {
+                if (bullet[i].active) {
+                    draw_bullet(bullet[i].posx, bullet[i].posy);
+                }
+            }
+            
+
 
         }
 
