@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <time.h>
 
 #define SCREEN_WIDTH 1100    //window height
 #define SCREEN_HEIGHT SCREEN_WIDTH*0.8  //window width
@@ -17,6 +18,7 @@
 #define FRAME_TIME 200
 
 #define MAXIMUM_BULLETS 10
+#define AMOUNT_ENEMIES 5
 
 //function prototypes
 //initilise SDL
@@ -36,6 +38,14 @@ typedef struct player_s {
     */
 } player_t;
 
+typedef struct enemy_s {
+    
+    int posx, posy;
+    int active;
+
+} enemy_t;
+
+
 typedef struct  bullet_s {
 
     int posx, posy, active;
@@ -46,6 +56,7 @@ typedef struct  bullet_s {
 static player_t player;
 int level;
 static bullet_t bullet[MAXIMUM_BULLETS];
+static enemy_t enemy[AMOUNT_ENEMIES];
 
 SDL_Window* window = NULL;	//The window we'll be rendering to
 SDL_Renderer *renderer;		//The renderer SDL will use to draw to the screen
@@ -58,6 +69,7 @@ static SDL_Surface *lives;
 static SDL_Surface *level_image;
 static SDL_Surface *killed_enemies;
 static SDL_Surface *numbermap;
+static SDL_Surface *enemy_image;
 
 //textures
 SDL_Texture *screen_texture;
@@ -574,11 +586,93 @@ static void init_game() {
     // Initial level
     level = 2;
 
-    bullet[0].active = 0;
-    bullet[1].active = 0;
-    bullet[2].active = 0;
-    bullet[3].active = 0;
+    for (int i = 0; i < MAXIMUM_BULLETS; i++)
+    {
+        bullet[i].active = 0;
+    }
 
+    for (int i = 0; i < AMOUNT_ENEMIES; i++)
+    {
+        enemy[i].active = 0;
+    }
+
+}
+
+static int is_enemy_position(int posx, int posy) {
+
+    for (int i = 0; i < AMOUNT_ENEMIES; i++)
+    {
+        if (enemy[i].active) {
+
+            if (posx == enemy[i].posx && posy == enemy[i].posy) {
+                
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+    
+}
+
+static void load_enemies() {
+
+   for (int i = 0; i < AMOUNT_ENEMIES; i++)
+   {
+       printf("Loading an enemy\n");
+       int posx, posy;
+
+       while (1)
+       {
+           //srand(time(0));
+
+           posx = rand() % BOARD_DIM; //random number between 0 and BOARD_DIM-1
+           posy = rand() % BOARD_DIM;
+           printf("random number = %d", posx);
+
+           if (!is_disabled_block(posx, posy) &&
+                posx != player.posx && posy != player.posy &&
+                !is_enemy_position(posx, posy)) {
+               
+                break;
+           }
+       }
+
+       printf("Enemy #%d, in position posx=%d posy=%d", i, posx, posy);
+       enemy[i].posx = posx;
+       enemy[i].posy = posy;
+       enemy[i].active = 1;
+
+   }
+    
+}
+
+static void draw_enemies () {
+
+    for (int i = 0; i < AMOUNT_ENEMIES; i++)
+    {
+        if (!enemy[i].active) {
+            continue;
+        }
+        
+        SDL_Rect src;
+        SDL_Rect dest;
+
+        src.x = 0;
+        src.y = 0;
+        src.w = enemy_image->w;
+        src.h = enemy_image->h;
+
+        int board_corner_posx = (screen->w/2) - (BOARD_WIDTH/2);
+        int board_corner_posy = (screen->h/3) - (BOARD_HEIGHT/2);
+        dest.x = board_corner_posx + (BOARD_WIDTH/BOARD_DIM) * enemy[i].posx;
+        dest.y = board_corner_posy + (BOARD_WIDTH/BOARD_DIM) * enemy[i].posy;
+        dest.w = 50;
+        dest.h = 50;
+
+        SDL_BlitSurface(enemy_image, &src, screen, &dest);    
+    }
+    
 }
 
 int main (int argc, char *args[]){
@@ -646,6 +740,7 @@ int main (int argc, char *args[]){
 
             if (keystate[SDL_SCANCODE_SPACE]){
                 state = 1;
+                load_enemies();
 
             }
 
@@ -662,6 +757,9 @@ int main (int argc, char *args[]){
 
             // draw player
             draw_player();
+
+            // draw enemies
+            draw_enemies();
 
             // draw lives count
             draw_player_lives();
@@ -810,6 +908,14 @@ int init(int width, int height, int argc, char *args[]) {
     if (killed_enemies == NULL) {
 
         printf("Could not load the killed_enemies image! SDL_Error: %s\n", SDL_GetError());
+    }
+
+    // load the enemy
+    enemy_image = SDL_LoadBMP("enemy.bmp");
+
+    if (enemy_image == NULL) {
+
+        printf("Could not load the enemy_image image! SDL_Error: %s\n", SDL_GetError());
     }
 
     // Set the title colourkey. 
