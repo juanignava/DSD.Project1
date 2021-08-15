@@ -159,6 +159,19 @@ static void draw_board() {
         }
     }
 
+    // map gates
+    src.x = board.x + (BOARD_WIDTH/BOARD_DIM)*-1 + 40;
+    src.y = board.y + (BOARD_HEIGHT/BOARD_DIM)*5;
+    src.w = 10;
+    src.h = BOARD_HEIGHT/BOARD_DIM;
+    int color_f = SDL_FillRect(screen, &src, SDL_MapRGB(screen->format, 41, 153, 45));
+
+    src.x = board.x + (BOARD_WIDTH/BOARD_DIM)*BOARD_DIM;
+    src.y = board.y + (BOARD_HEIGHT/BOARD_DIM)*5;
+    src.w = 10;
+    src.h = BOARD_HEIGHT/BOARD_DIM;
+    int color_s = SDL_FillRect(screen, &src, SDL_MapRGB(screen->format, 41, 153, 45));
+
 }
 
 /*
@@ -362,6 +375,10 @@ static void move_player(int d) {
 
                 player.posx += 1;
             }
+            else if (player.posx+1 == BOARD_DIM && player.posy == 5) {
+                
+                player.posx = 0;
+            }
         } else {
             
             player.direction = 1;
@@ -393,6 +410,10 @@ static void move_player(int d) {
                 !is_disabled_block(player.posx-1, player.posy)) {
 
                 player.posx -= 1;
+            }
+            else if (player.posx-1 == -1 && player.posy == 5) {
+                
+                player.posx = BOARD_DIM-1;
             }
         } else {
             
@@ -466,7 +487,7 @@ static void init_game() {
     player.direction = 1;
 
     // Initial level
-    level = 1;
+    level = 2;
 
 }
 
