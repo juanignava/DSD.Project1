@@ -19,6 +19,7 @@
 
 #define MAXIMUM_BULLETS 10
 #define AMOUNT_ENEMIES 5
+#define MAX_EXPLOSIONS 3
 
 //function prototypes
 //initilise SDL
@@ -29,6 +30,7 @@ typedef struct player_s {
     int posx, posy;     // position in game board
     int w, h;           // player image dimensions
     int lives, points; 
+    int in_collision;   // needed to display collision image
     int direction;      // needed to control the player image and shooting
     /* Diretions:
     0 = up
@@ -51,12 +53,18 @@ typedef struct  bullet_s {
     int posx, posy, active;
 } bullet_t;
 
+typedef struct explosion_s {
+
+    int posx, posy, active;
+} explosion_t;
+
 
 // Program globals
 static player_t player;
 int level;
 static bullet_t bullet[MAXIMUM_BULLETS];
 static enemy_t enemy[AMOUNT_ENEMIES];
+static explosion_t explosion[MAX_EXPLOSIONS];
 
 SDL_Window* window = NULL;	//The window we'll be rendering to
 SDL_Renderer *renderer;		//The renderer SDL will use to draw to the screen
@@ -70,6 +78,8 @@ static SDL_Surface *level_image;
 static SDL_Surface *killed_enemies;
 static SDL_Surface *numbermap;
 static SDL_Surface *enemy_image;
+static SDL_Surface *explosion_image;
+static SDL_Surface *explosion_player;
 
 //textures
 SDL_Texture *screen_texture;
@@ -464,6 +474,39 @@ static void draw_bullet(int posx, int posy) {
 
 }
 
+static int is_bullet_impact(int posx, int posy) {
+
+    for (int i = 0; i < AMOUNT_ENEMIES; i++) {
+        
+        if (!enemy[i].active) {
+
+            continue;
+        }
+
+        if (enemy[i].posx == posx && enemy[i].posy == posy) {
+
+            enemy[i].active = 0;
+            player.points += 1;
+
+            for (int i = 0; i < MAX_EXPLOSIONS; i++)
+            {
+                if (!explosion[i].active)
+                {
+                    explosion[i].active = 1;
+                    explosion[i].posx = posx;
+                    explosion[i].posy = posy;
+                }
+                
+            }
+            
+            return 1;
+        }
+    }
+
+    return 0;
+    
+}
+
 static void shoot_recursion(int bullet_number, int dir, int posx, int posy) {
 
     switch (dir) {
@@ -492,9 +535,15 @@ static void shoot_recursion(int bullet_number, int dir, int posx, int posy) {
             bullet[bullet_number].posx = posx;
             bullet[bullet_number].posy = posy;
             
-            //draw_bullet(posx, posy);
-            SDL_Delay(FRAME_TIME);
-            shoot_recursion(bullet_number, dir, posx, posy);
+            if (!is_bullet_impact(posx, posy)) {
+
+                SDL_Delay(FRAME_TIME);
+                shoot_recursion(bullet_number, dir, posx, posy);
+            }
+            else {
+                bullet[bullet_number].active = 0;
+            }
+            
         }
         else {
             bullet[bullet_number].active = 0;
@@ -561,12 +610,15 @@ static void draw_player() {
 
     }
 
-    if (player_image == NULL) {
+    if (player.in_collision) {
 
-        printf("Could not load the player image! SDL_Error: %s\n", SDL_GetError());
+        SDL_BlitSurface(explosion_player, &src, screen, &dest);
+        player.in_collision = 0;
     }
+    else {
 
-    SDL_BlitSurface(player_image, &src, screen, &dest);
+        SDL_BlitSurface(player_image, &src, screen, &dest);
+    }
 }
 
 /*
@@ -579,12 +631,13 @@ static void init_game() {
     player.posy = 0;
     player.w = 50;
     player.h = 50;
+    player.in_collision = 0;
     player.lives = 3;
     player.points = 0;
     player.direction = 1;
 
     // Initial level
-    level = 2;
+    level = 1;
 
     for (int i = 0; i < MAXIMUM_BULLETS; i++)
     {
@@ -624,8 +677,6 @@ static void load_enemies() {
 
        while (1)
        {
-           //srand(time(0));
-
            posx = rand() % BOARD_DIM; //random number between 0 and BOARD_DIM-1
            posy = rand() % BOARD_DIM;
            printf("random number = %d", posx);
@@ -675,7 +726,57 @@ static void draw_enemies () {
     
 }
 
-int main (int argc, char *args[]){
+static void draw_explosion() {
+
+    for (int i = 0; i < MAX_EXPLOSIONS; i++)
+    {
+        if (!explosion[i].active)
+        {
+            continue;
+        }
+
+        SDL_Rect src;
+        SDL_Rect dest;
+
+        src.x = 0;
+        src.y = 0;
+        src.w = explosion_image->w;
+        src.h = explosion_image->h;
+
+        int board_corner_posx = (screen->w/2) - (BOARD_WIDTH/2);
+        int board_corner_posy = (screen->h/3) - (BOARD_HEIGHT/2);
+        dest.x = board_corner_posx + (BOARD_WIDTH/BOARD_DIM) * explosion[i].posx;
+        dest.y = board_corner_posy + (BOARD_WIDTH/BOARD_DIM) * explosion[i].posy;
+        dest.w = 50;
+        dest.h = 50;
+
+        SDL_BlitSurface(explosion_image, &src, screen, &dest);   
+
+        explosion[i].active = 0;
+        
+    }
+    
+}
+
+static void player_enemy_colision() {
+
+    for (int i = 0; i < AMOUNT_ENEMIES; i++) {
+        
+        if (!enemy[i].active) {
+            continue;
+        }
+        
+        if (player.posx == enemy[i].posx &&
+            player.posy == enemy[i].posy) {
+            
+            player.in_collision = 1;
+            enemy[i].active = 0;
+        }
+    }
+    
+}
+
+int main (int argc, char *args[]) {
 
     //SDL Window setup
 	if (init(SCREEN_WIDTH, SCREEN_HEIGHT, argc, args) == 1) {
@@ -749,17 +850,23 @@ int main (int argc, char *args[]){
         // display the game
         } else if (state = 1){
 
+            // Analize player and enemy possible collision
+            player_enemy_colision();
+
             // draw game board
             draw_board();
 
             // draw the game radar
             draw_radar();
 
+            // draw enemies
+            draw_enemies();
+
             // draw player
             draw_player();
 
-            // draw enemies
-            draw_enemies();
+            // draw explosions
+            draw_explosion();
 
             // draw lives count
             draw_player_lives();
@@ -916,6 +1023,22 @@ int init(int width, int height, int argc, char *args[]) {
     if (enemy_image == NULL) {
 
         printf("Could not load the enemy_image image! SDL_Error: %s\n", SDL_GetError());
+    }
+
+    // load the explosion
+    explosion_image = SDL_LoadBMP("explosion.bmp");
+
+    if (explosion_image == NULL) {
+
+        printf("Could not load the explosion_image image! SDL_Error: %s\n", SDL_GetError());
+    }
+
+    // load the explosion player
+    explosion_player = SDL_LoadBMP("explosion_player.bmp");
+
+    if (explosion_player == NULL) {
+
+        printf("Could not load the explosion_player image! SDL_Error: %s\n", SDL_GetError());
     }
 
     // Set the title colourkey. 
