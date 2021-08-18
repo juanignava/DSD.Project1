@@ -21,10 +21,13 @@
 #define AMOUNT_ENEMIES 5
 #define MAX_EXPLOSIONS 3
 
-//function prototypes
 //initilise SDL
 int init(int w, int h, int argc, char *args[]);
 
+//   __________________ 
+//  /program structures
+
+// players
 typedef struct player_s {
     
     int posx, posy;     // position in game board
@@ -40,6 +43,7 @@ typedef struct player_s {
     */
 } player_t;
 
+// enemies
 typedef struct enemy_s {
     
     int posx, posy;
@@ -47,19 +51,21 @@ typedef struct enemy_s {
 
 } enemy_t;
 
-
+// bullets
 typedef struct  bullet_s {
 
     int posx, posy, active;
 } bullet_t;
 
+// explosions 
 typedef struct explosion_s {
 
     int posx, posy, active;
 } explosion_t;
 
 
-// Program globals
+//  _______________
+// /Program globals
 static player_t player;
 int level;
 static bullet_t bullet[MAXIMUM_BULLETS];
@@ -273,6 +279,9 @@ static void draw_player_lives() {
 	SDL_BlitSurface(numbermap, &src_num, screen, &dest_num);
 }
 
+/*
+Description: function that draws the "Level" text image.
+*/
 static void draw_level() {
 
     SDL_Rect src;
@@ -311,6 +320,9 @@ static void draw_level() {
 	SDL_BlitSurface(numbermap, &src_num, screen, &dest_num);
 }
 
+/*
+Description: function that draws the "Kiled Enemies" text image.
+*/
 static void draw_killed_enemies() {
 
     SDL_Rect src;
@@ -453,6 +465,9 @@ static void move_player(int d) {
     }
 }
 
+/*
+Description: function that draws a red rectangle that simulates a bullet
+*/
 static void draw_bullet(int posx, int posy) {
 
     SDL_Rect src;
@@ -460,12 +475,13 @@ static void draw_bullet(int posx, int posy) {
     int initial_x = (screen->w/2) - (BOARD_WIDTH/2);
     int initial_y  = (screen->h/3) - (BOARD_HEIGHT/2);
 
+    // centers the bullet
     src.x = initial_x + (BOARD_WIDTH/BOARD_DIM)*posx + (BOARD_WIDTH/BOARD_DIM)/3;
     src.y = initial_y + (BOARD_HEIGHT/BOARD_DIM)*posy + (BOARD_HEIGHT/BOARD_DIM)/3;
     src.w = (BOARD_WIDTH/BOARD_DIM)/3;
     src.h = (BOARD_HEIGHT/BOARD_DIM)/3;
 
-    int color = SDL_FillRect(screen, &src, SDL_MapRGB(screen->format, 250, 0, 0));
+    int color = SDL_FillRect(screen, &src, SDL_MapRGB(screen->format, 250, 0, 0)); // red color
 
     if (color != 0) {
 
@@ -474,9 +490,14 @@ static void draw_bullet(int posx, int posy) {
 
 }
 
+/*
+Description: checks if the bullet crashed an enemy, if it does
+active attributes of enemy and bullet are turned off. Also an explosion is
+activated in the position given.
+*/
 static int is_bullet_impact(int posx, int posy) {
 
-    for (int i = 0; i < AMOUNT_ENEMIES; i++) {
+    for (int i = 0; i < AMOUNT_ENEMIES; i++) { // checks on every active enemy
         
         if (!enemy[i].active) {
 
@@ -485,12 +506,12 @@ static int is_bullet_impact(int posx, int posy) {
 
         if (enemy[i].posx == posx && enemy[i].posy == posy) {
 
-            enemy[i].active = 0;
-            player.points += 1;
+            enemy[i].active = 0; // erases the enemy
+            player.points += 1;     
 
             for (int i = 0; i < MAX_EXPLOSIONS; i++)
             {
-                if (!explosion[i].active)
+                if (!explosion[i].active) // activates an explosion
                 {
                     explosion[i].active = 1;
                     explosion[i].posx = posx;
@@ -507,8 +528,13 @@ static int is_bullet_impact(int posx, int posy) {
     
 }
 
+/*
+Description: this function updates the bullet movement, uses other funcions to check if
+the bullet hasn't shot anyone.
+*/
 static void shoot_recursion(int bullet_number, int dir, int posx, int posy) {
 
+    // Depending on the player direction the bullet moves.
     switch (dir) {
 
     case 0:
@@ -528,9 +554,10 @@ static void shoot_recursion(int bullet_number, int dir, int posx, int posy) {
         break;
     }
 
+    // if the bullet is still in the board
     if (posy >= 0 && posy < BOARD_DIM && posx >= 0 && posx < BOARD_DIM) {
 
-        if (!is_disabled_block(posx, posy)) {
+        if (!is_disabled_block(posx, posy)) { // bullets can be stopped by walls
 
             bullet[bullet_number].posx = posx;
             bullet[bullet_number].posy = posy;
@@ -553,7 +580,7 @@ static void shoot_recursion(int bullet_number, int dir, int posx, int posy) {
     }
 }
 
-void *shoot(void *vargp) {
+void *shoot(void *vargp) { // bullet thread main function
 
     for (int i = 0; i < MAXIMUM_BULLETS; i++)
     {
@@ -651,6 +678,9 @@ static void init_game() {
 
 }
 
+/*
+Description: checks if the current enemy position is not taken by another enemy
+*/
 static int is_enemy_position(int posx, int posy) {
 
     for (int i = 0; i < AMOUNT_ENEMIES; i++)
@@ -668,9 +698,12 @@ static int is_enemy_position(int posx, int posy) {
     
 }
 
+/*
+Description: this function initializes the enemies positions in random places of the board.
+*/
 static void load_enemies() {
 
-   for (int i = 0; i < AMOUNT_ENEMIES; i++)
+   for (int i = 0; i < AMOUNT_ENEMIES; i++) // Loads all enemies
    {
        printf("Loading an enemy\n");
        int posx, posy;
@@ -681,6 +714,7 @@ static void load_enemies() {
            posy = rand() % BOARD_DIM;
            printf("random number = %d", posx);
 
+            // new position can't be a disables block and another player or enemy position.
            if (!is_disabled_block(posx, posy) &&
                 posx != player.posx && posy != player.posy &&
                 !is_enemy_position(posx, posy)) {
@@ -698,9 +732,12 @@ static void load_enemies() {
     
 }
 
+/*
+Description: function that draws the enemies in their respective positions
+*/
 static void draw_enemies () {
 
-    for (int i = 0; i < AMOUNT_ENEMIES; i++)
+    for (int i = 0; i < AMOUNT_ENEMIES; i++) // for all the active enemies
     {
         if (!enemy[i].active) {
             continue;
@@ -726,9 +763,12 @@ static void draw_enemies () {
     
 }
 
+/*
+Description: function needed to draw the active explosions
+*/
 static void draw_explosion() {
 
-    for (int i = 0; i < MAX_EXPLOSIONS; i++)
+    for (int i = 0; i < MAX_EXPLOSIONS; i++) // for every active explosions
     {
         if (!explosion[i].active)
         {
@@ -758,6 +798,10 @@ static void draw_explosion() {
     
 }
 
+/*
+Description: checks if there is an enemy and player in the same positions, if this happens,
+the enemy disappears and the player losses a life.
+*/
 static void player_enemy_colision() {
 
     for (int i = 0; i < AMOUNT_ENEMIES; i++) {
@@ -770,6 +814,7 @@ static void player_enemy_colision() {
             player.posy == enemy[i].posy) {
             
             player.in_collision = 1;
+            player.lives -= 1;
             enemy[i].active = 0;
         }
     }
