@@ -18,7 +18,7 @@
 #define FRAME_TIME 200
 
 #define MAXIMUM_BULLETS 10
-#define AMOUNT_ENEMIES 5
+#define AMOUNT_ENEMIES 1
 #define MAX_EXPLOSIONS 3
 
 //initilise SDL
@@ -32,7 +32,7 @@ typedef struct player_s {
     
     int posx, posy;     // position in game board
     int w, h;           // player image dimensions
-    int lives, points; 
+    int lives, points, destroyed_enemies; 
     int in_collision;   // needed to display collision image
     int direction;      // needed to control the player image and shooting
     /* Diretions:
@@ -66,6 +66,9 @@ typedef struct explosion_s {
 
 //  _______________
 // /Program globals
+int quit = 0;
+int state = 0;
+int sleep = 0;
 static player_t player;
 int level;
 static bullet_t bullet[MAXIMUM_BULLETS];
@@ -85,7 +88,11 @@ static SDL_Surface *killed_enemies;
 static SDL_Surface *numbermap;
 static SDL_Surface *enemy_image;
 static SDL_Surface *explosion_image;
+static SDL_Surface *level_up;
 static SDL_Surface *explosion_player;
+static SDL_Surface *game_over;
+static SDL_Surface *win_image;
+
 
 //textures
 SDL_Texture *screen_texture;
@@ -212,33 +219,6 @@ static void draw_board() {
 }
 
 /*
-Description: function that draws the radar box and enemy positions
-*/
-static void draw_radar() {
-
-    SDL_Rect radar, radar_border;
-
-    radar.x = (screen->w/2) - (RADAR_WIDTH/2);
-    radar.y = (5*screen->h/6) - (RADAR_HEIGHT/2);
-    radar.w = RADAR_WIDTH;
-    radar.h = RADAR_HEIGHT;
-
-    radar_border.x = (screen->w/2) - (RADAR_WIDTH/2) - 10;
-    radar_border.y = (5*screen->h/6) - (RADAR_HEIGHT/2) - 10;
-    radar_border.w = RADAR_WIDTH + 20;
-    radar_border.h = RADAR_HEIGHT + 20;
-
-    int r_1 = SDL_FillRect(screen, &radar_border, SDL_MapRGB(screen->format, 143, 143, 143));
-    int r_2 = SDL_FillRect(screen, &radar, SDL_MapRGB(screen->format, 0, 0, 0));
-
-    if (r_1 != 0 || r_2 != 0) {
-
-        printf("fill rectangle failed in func draw_radar()");
-    }
-
-}
-
-/*
 Description: function that draws the player's amount of lives
 */
 static void draw_player_lives() {
@@ -289,7 +269,7 @@ static void draw_level() {
 
 	src.x = 0;
 	src.y = 0;
-	src.w = level_image->w;
+	src.w = level_up->w;
 	src.h = level_image->h;
 
 	dest.x = 1*screen->w/4;
@@ -382,6 +362,61 @@ static void draw_menu() {
 
 	SDL_BlitSurface(title, &src, screen, &dest);
 }
+
+static void draw_next_level() {
+
+    SDL_Rect src;
+	SDL_Rect dest;
+
+	src.x = 0;
+	src.y = 0;
+	src.w = level_up->w;
+	src.h = level_up->h;
+
+	dest.x = (screen->w / 2) - (src.w / 2);
+	dest.y = (screen->h / 2) - (src.h / 2);
+	dest.w = level_up->w;
+	dest.h = level_up->h;
+
+	SDL_BlitSurface(level_up, &src, screen, &dest);
+}
+
+static void draw_win() {
+
+    SDL_Rect src;
+	SDL_Rect dest;
+
+	src.x = 0;
+	src.y = 0;
+	src.w = win_image->w;
+	src.h = win_image->h;
+
+	dest.x = (screen->w / 2) - (src.w / 2);
+	dest.y = (screen->h / 2) - (src.h / 2);
+	dest.w = win_image->w;
+	dest.h = win_image->h;
+
+	SDL_BlitSurface(win_image, &src, screen, &dest);
+}
+
+static void draw_game_over() {
+
+    SDL_Rect src;
+	SDL_Rect dest;
+
+	src.x = 0;
+	src.y = 0;
+	src.w = game_over->w;
+	src.h = game_over->h;
+
+	dest.x = (screen->w / 2) - (src.w / 2);
+	dest.y = (screen->h / 2) - (src.h / 2);
+	dest.w = game_over->w;
+	dest.h = game_over->h;
+
+	SDL_BlitSurface(game_over, &src, screen, &dest);
+}
+
 
 /*
 Description: this function changes the player's position or orientation,
@@ -507,8 +542,14 @@ static int is_bullet_impact(int posx, int posy) {
         if (enemy[i].posx == posx && enemy[i].posy == posy) {
 
             enemy[i].active = 0; // erases the enemy
-            player.points += 1;     
+            player.points += 1; 
+            player.destroyed_enemies += 1;
 
+            if (player.destroyed_enemies == AMOUNT_ENEMIES) {
+                state = 2;
+                level += 1;
+            }
+                
             for (int i = 0; i < MAX_EXPLOSIONS; i++)
             {
                 if (!explosion[i].active) // activates an explosion
@@ -699,20 +740,66 @@ static int is_enemy_position(int posx, int posy) {
 }
 
 /*
+Description: function that draws the radar box and enemy positions
+*/
+static void draw_radar() {
+
+    SDL_Rect radar, radar_border;
+
+    radar.x = (screen->w/2) - (RADAR_WIDTH/2);
+    radar.y = (5*screen->h/6) - (RADAR_HEIGHT/2);
+    radar.w = RADAR_WIDTH;
+    radar.h = RADAR_HEIGHT;
+
+    radar_border.x = (screen->w/2) - (RADAR_WIDTH/2) - 10;
+    radar_border.y = (5*screen->h/6) - (RADAR_HEIGHT/2) - 10;
+    radar_border.w = RADAR_WIDTH + 20;
+    radar_border.h = RADAR_HEIGHT + 20;
+
+    int r_1 = SDL_FillRect(screen, &radar_border, SDL_MapRGB(screen->format, 143, 143, 143));
+    int r_2 = SDL_FillRect(screen, &radar, SDL_MapRGB(screen->format, 0, 0, 0));
+
+    if (r_1 != 0 || r_2 != 0) {
+
+        printf("fill rectangle failed in func draw_radar()");
+    }
+
+    SDL_Rect src;
+    int i;
+
+    for (i = 0; i < BOARD_DIM; i++) {
+        int j;
+
+        for (j = 0; j < BOARD_DIM; j++) {
+            
+            if (is_enemy_position(i, j)) {
+
+                src.x = radar.x + (RADAR_WIDTH/BOARD_DIM)*i;
+                src.y = radar.y + (RADAR_HEIGHT/BOARD_DIM)*j;
+                src.w = RADAR_WIDTH/BOARD_DIM;
+                src.h = RADAR_HEIGHT/BOARD_DIM;
+
+                int color = SDL_FillRect(screen, &src, SDL_MapRGB(screen->format, 240, 171, 12));
+            }
+        }
+    }
+
+}
+
+/*
 Description: this function initializes the enemies positions in random places of the board.
 */
 static void load_enemies() {
 
    for (int i = 0; i < AMOUNT_ENEMIES; i++) // Loads all enemies
    {
-       printf("Loading an enemy\n");
        int posx, posy;
 
+       srand(time(0));
        while (1)
        {
            posx = rand() % BOARD_DIM; //random number between 0 and BOARD_DIM-1
            posy = rand() % BOARD_DIM;
-           printf("random number = %d", posx);
 
             // new position can't be a disables block and another player or enemy position.
            if (!is_disabled_block(posx, posy) &&
@@ -723,7 +810,6 @@ static void load_enemies() {
            }
        }
 
-       printf("Enemy #%d, in position posx=%d posy=%d", i, posx, posy);
        enemy[i].posx = posx;
        enemy[i].posy = posy;
        enemy[i].active = 1;
@@ -815,7 +901,11 @@ static void player_enemy_colision() {
             
             player.in_collision = 1;
             player.lives -= 1;
+            player.destroyed_enemies += 1;
             enemy[i].active = 0;
+
+            if (player.lives == 0) state = 3;
+            
         }
     }
     
@@ -829,9 +919,9 @@ int main (int argc, char *args[]) {
 		return 0;
 	}
 
-    int quit = 0;
-    int state = 0;
-    int sleep = 0;
+    quit = 0;
+    state = 0;
+    sleep = 0;
     Uint32 next_game_tick = SDL_GetTicks();
 
     // Initialize player position
@@ -893,7 +983,66 @@ int main (int argc, char *args[]) {
             draw_menu();
 
         // display the game
-        } else if (state = 1){
+        } else if (state == 2) {
+
+            if(keystate[SDL_SCANCODE_SPACE]) {
+                
+                // delay for a little
+                SDL_Delay(500);
+
+                if (level == 4) {
+                    level = 1;
+                    state = 0;
+                    player.points = 0;
+                    player.destroyed_enemies = 0;
+                    player.posx = 0;
+                    player.posy = 0;
+                    player.lives = 3;
+                    player.direction = 1;
+
+                } else{
+                    state = 1;
+                    player.posx = 0;
+                    player.posy = 0;
+                    load_enemies();
+                    player.points = 0;
+                    player.destroyed_enemies = 0;
+                    
+                }   
+
+            }
+
+            else if (level == 4) {
+                
+                draw_win();
+            }
+            else {
+                draw_next_level();
+            }
+
+        } else if (state == 3)  {
+
+            if(keystate[SDL_SCANCODE_SPACE]) {
+
+                level = 1;
+                state = 0;
+                player.points = 0;
+                player.destroyed_enemies = 0;
+                player.posx = 0;
+                player.posy = 0;
+                player.lives = 3;
+                player.direction = 1;
+                state = 0;
+                // delay for a little
+                SDL_Delay(500);
+            }
+
+            else {
+                printf("GAME OVER");
+                draw_game_over();
+            }
+
+        } else if (state == 1){
 
             // Analize player and enemy possible collision
             player_enemy_colision();
@@ -922,7 +1071,7 @@ int main (int argc, char *args[]) {
             // draw killed enemies count
             draw_killed_enemies();
 
-            // daw bullet
+            // draw bullet
             for (int i = 0; i < MAXIMUM_BULLETS; i++)
             {
                 if (bullet[i].active) {
@@ -1078,12 +1227,36 @@ int init(int width, int height, int argc, char *args[]) {
         printf("Could not load the explosion_image image! SDL_Error: %s\n", SDL_GetError());
     }
 
+    // load the level_image
+    level_up = SDL_LoadBMP("level_up.bmp");
+
+    if (level_up == NULL) {
+
+        printf("Could not load the level_up image! SDL_Error: %s\n", SDL_GetError());
+    }
+
     // load the explosion player
     explosion_player = SDL_LoadBMP("explosion_player.bmp");
 
     if (explosion_player == NULL) {
 
         printf("Could not load the explosion_player image! SDL_Error: %s\n", SDL_GetError());
+    }
+
+    // load the game over
+    game_over = SDL_LoadBMP("game_over.bmp");
+
+    if (game_over == NULL) {
+
+        printf("Could not load the game_over image! SDL_Error: %s\n", SDL_GetError());
+    }
+
+    // load the explosion player
+    win_image = SDL_LoadBMP("win_image.bmp");
+
+    if (win_image == NULL) {
+
+        printf("Could not load the win_image image! SDL_Error: %s\n", SDL_GetError());
     }
 
     // Set the title colourkey. 
