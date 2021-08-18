@@ -44,7 +44,7 @@ typedef struct player_s {
 } player_t;
 
 // enemies
-typedef struct enemy_s {
+typedef struct {
     
     int posx, posy;
     int active;
@@ -74,7 +74,12 @@ int sleep = 0;
 static player_t player;
 int level;
 static bullet_t bullet[MAXIMUM_BULLETS];
-static enemy_t enemy[AMOUNT_ENEMIES];
+//static enemy_t* enemy;
+enemy_t* enemy;
+
+
+
+
 static explosion_t explosion[MAX_EXPLOSIONS];
 
 SDL_Window* window = NULL;	//The window we'll be rendering to
@@ -89,6 +94,7 @@ static SDL_Surface *level_image;
 static SDL_Surface *killed_enemies;
 static SDL_Surface *numbermap;
 static SDL_Surface *enemy_image;
+static SDL_Surface *enemy_image_red;
 static SDL_Surface *explosion_image;
 static SDL_Surface *level_up;
 static SDL_Surface *explosion_player;
@@ -697,6 +703,15 @@ Description: Function that initializes the main variables in the game
 */
 static void init_game() {
 
+    enemy = malloc(AMOUNT_ENEMIES * sizeof (*enemy));
+
+    for (int i = 0; i < AMOUNT_ENEMIES; i++) {
+        enemy[i].posx = (int*)malloc(sizeof(int*));
+        enemy[i].posy = (int*)malloc(sizeof(int*));
+        enemy[i].active = (int*)malloc(sizeof(int*));
+        enemy[i].is_visible = (int*)malloc(sizeof(int*));
+    }
+
     // Initialize player constants
     player.posx = 0;
     player.posy = 0;
@@ -754,12 +769,18 @@ static void move_enemies_aux(enemy_t *enemy, int axis, int dir) {
                 !is_enemy_position(enemy->posx+1, enemy->posy)) {
                 enemy->posx += 1;
             }
+            else {
+                move_enemies_aux(enemy, 1, -1);
+            }
         } else {
 
             if (enemy->posx-1 >= 0 && 
                 !is_disabled_block(enemy->posx-1, enemy->posy) &&
                 !is_enemy_position(enemy->posx-1, enemy->posy)) {
                 enemy->posx -= 1;
+            }
+            else {
+                move_enemies_aux(enemy, -1, 1);
             }
         }
         
@@ -772,6 +793,9 @@ static void move_enemies_aux(enemy_t *enemy, int axis, int dir) {
                 !is_disabled_block(enemy->posx, enemy->posy-1) &&
                 !is_enemy_position(enemy->posx, enemy->posy-1)) {
                 enemy->posy -= 1;
+            }
+            else {
+                move_enemies_aux(enemy, -1, -1);
             }
         } else { // down
 
@@ -944,7 +968,9 @@ static void draw_enemies () {
 
         if (enemy[i].is_visible)
         {
-            SDL_BlitSurface(enemy_image, &src, screen, &dest); 
+            if (level != 1) SDL_BlitSurface(enemy_image_red, &src, screen, &dest); 
+            
+            else SDL_BlitSurface(enemy_image, &src, screen, &dest); 
         }   
     }
     
@@ -1203,6 +1229,9 @@ int main (int argc, char *args[]) {
 	SDL_FreeSurface(screen);
 	SDL_FreeSurface(title);
 
+    // de alocate memory
+	free(enemy);
+
     //free renderer and all textures used with it
 	SDL_DestroyRenderer(renderer);
 	
@@ -1324,6 +1353,13 @@ int init(int width, int height, int argc, char *args[]) {
     if (enemy_image == NULL) {
 
         printf("Could not load the enemy_image image! SDL_Error: %s\n", SDL_GetError());
+    }
+    // load the enemy
+    enemy_image_red = SDL_LoadBMP("enemy_red.bmp");
+
+    if (enemy_image_red == NULL) {
+
+        printf("Could not load the enemy_image_red image! SDL_Error: %s\n", SDL_GetError());
     }
 
     // load the explosion
