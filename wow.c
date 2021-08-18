@@ -670,19 +670,19 @@ static void draw_player() {
     switch (player.direction) {
 
         case 0:
-            player_image = SDL_LoadBMP("player_up.bmp");
+            player_image = SDL_LoadBMP("images/player_up.bmp");
             break;
 
         case 1:
-            player_image = SDL_LoadBMP("player_right.bmp");
+            player_image = SDL_LoadBMP("images/player_right.bmp");
             break;
         
         case 2:
-            player_image = SDL_LoadBMP("player_down.bmp");
+            player_image = SDL_LoadBMP("images/player_down.bmp");
             break;
 
         case 3:
-            player_image = SDL_LoadBMP("player_left.bmp");
+            player_image = SDL_LoadBMP("images/player_left.bmp");
             break;
 
     }
@@ -969,7 +969,7 @@ static void draw_enemies () {
         if (enemy[i].is_visible)
         {
             if (level != 1) SDL_BlitSurface(enemy_image_red, &src, screen, &dest); 
-            
+
             else SDL_BlitSurface(enemy_image, &src, screen, &dest); 
         }   
     }
@@ -1298,7 +1298,7 @@ int init(int width, int height, int argc, char *args[]) {
 	}
 
     //Load the title image
-	title = SDL_LoadBMP("title.bmp");
+	title = SDL_LoadBMP("images/title.bmp");
 
 	if (title == NULL) {
 		
@@ -1308,7 +1308,7 @@ int init(int width, int height, int argc, char *args[]) {
 	}
 
     // Load the player left image
-    player_image = SDL_LoadBMP("player_right.bmp");
+    player_image = SDL_LoadBMP("images/player_right.bmp");
 
     if (player_image == NULL) {
 
@@ -1316,7 +1316,7 @@ int init(int width, int height, int argc, char *args[]) {
     }
 
     // load de lives image
-    lives = SDL_LoadBMP("lives.bmp");
+    lives = SDL_LoadBMP("images/lives.bmp");
 
     if (lives == NULL) {
 
@@ -1324,7 +1324,7 @@ int init(int width, int height, int argc, char *args[]) {
     }
 
     // load numbermap
-    numbermap = SDL_LoadBMP("numbermap.bmp");
+    numbermap = SDL_LoadBMP("images/numbermap.bmp");
 
     if (lives == NULL) {
 
@@ -1332,7 +1332,7 @@ int init(int width, int height, int argc, char *args[]) {
     }
 
     // load level 
-    level_image = SDL_LoadBMP("level.bmp");
+    level_image = SDL_LoadBMP("images/level.bmp");
 
     if (level_image == NULL) {
 
@@ -1340,7 +1340,7 @@ int init(int width, int height, int argc, char *args[]) {
     }
 
     // load killed_enemies
-    killed_enemies = SDL_LoadBMP("killed_enemies.bmp");
+    killed_enemies = SDL_LoadBMP("images/killed_enemies.bmp");
 
     if (killed_enemies == NULL) {
 
@@ -1348,14 +1348,14 @@ int init(int width, int height, int argc, char *args[]) {
     }
 
     // load the enemy
-    enemy_image = SDL_LoadBMP("enemy.bmp");
+    enemy_image = SDL_LoadBMP("images/enemy.bmp");
 
     if (enemy_image == NULL) {
 
         printf("Could not load the enemy_image image! SDL_Error: %s\n", SDL_GetError());
     }
     // load the enemy
-    enemy_image_red = SDL_LoadBMP("enemy_red.bmp");
+    enemy_image_red = SDL_LoadBMP("images/enemy_red.bmp");
 
     if (enemy_image_red == NULL) {
 
@@ -1363,7 +1363,7 @@ int init(int width, int height, int argc, char *args[]) {
     }
 
     // load the explosion
-    explosion_image = SDL_LoadBMP("explosion.bmp");
+    explosion_image = SDL_LoadBMP("images/explosion.bmp");
 
     if (explosion_image == NULL) {
 
@@ -1371,7 +1371,7 @@ int init(int width, int height, int argc, char *args[]) {
     }
 
     // load the level_image
-    level_up = SDL_LoadBMP("level_up.bmp");
+    level_up = SDL_LoadBMP("images/level_up.bmp");
 
     if (level_up == NULL) {
 
@@ -1379,7 +1379,7 @@ int init(int width, int height, int argc, char *args[]) {
     }
 
     // load the explosion player
-    explosion_player = SDL_LoadBMP("explosion_player.bmp");
+    explosion_player = SDL_LoadBMP("images/explosion_player.bmp");
 
     if (explosion_player == NULL) {
 
@@ -1387,7 +1387,7 @@ int init(int width, int height, int argc, char *args[]) {
     }
 
     // load the game over
-    game_over = SDL_LoadBMP("game_over.bmp");
+    game_over = SDL_LoadBMP("images/game_over.bmp");
 
     if (game_over == NULL) {
 
@@ -1395,7 +1395,7 @@ int init(int width, int height, int argc, char *args[]) {
     }
 
     // load the explosion player
-    win_image = SDL_LoadBMP("win_image.bmp");
+    win_image = SDL_LoadBMP("images/win_image.bmp");
 
     if (win_image == NULL) {
 
