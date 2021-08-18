@@ -18,7 +18,7 @@
 #define FRAME_TIME 200
 
 #define MAXIMUM_BULLETS 10
-#define AMOUNT_ENEMIES 1
+#define AMOUNT_ENEMIES 6
 #define MAX_EXPLOSIONS 3
 
 //initilise SDL
@@ -48,6 +48,7 @@ typedef struct enemy_s {
     
     int posx, posy;
     int active;
+    int is_visible;
 
 } enemy_t;
 
@@ -66,6 +67,7 @@ typedef struct explosion_s {
 
 //  _______________
 // /Program globals
+int counter = 0;
 int quit = 0;
 int state = 0;
 int sleep = 0;
@@ -500,6 +502,7 @@ static void move_player(int d) {
     }
 }
 
+
 /*
 Description: function that draws a red rectangle that simulates a bullet
 */
@@ -715,6 +718,7 @@ static void init_game() {
     for (int i = 0; i < AMOUNT_ENEMIES; i++)
     {
         enemy[i].active = 0;
+        enemy[i].is_visible = 1;
     }
 
 }
@@ -738,6 +742,95 @@ static int is_enemy_position(int posx, int posy) {
     return 0;
     
 }
+
+static void move_enemies_aux(enemy_t *enemy, int axis, int dir) {
+
+    if (axis == 1) { // x axis
+        
+        if (dir == 1) { // right
+            
+            if (enemy->posx+1 < BOARD_DIM && 
+                !is_disabled_block(enemy->posx+1, enemy->posy) &&
+                !is_enemy_position(enemy->posx+1, enemy->posy)) {
+                enemy->posx += 1;
+            }
+        } else {
+
+            if (enemy->posx-1 >= 0 && 
+                !is_disabled_block(enemy->posx-1, enemy->posy) &&
+                !is_enemy_position(enemy->posx-1, enemy->posy)) {
+                enemy->posx -= 1;
+            }
+        }
+        
+    }
+    else { // y axis
+
+        if (dir == 1) { // up
+            
+            if (enemy->posy-1 >= 0 && 
+                !is_disabled_block(enemy->posx, enemy->posy-1) &&
+                !is_enemy_position(enemy->posx, enemy->posy-1)) {
+                enemy->posy -= 1;
+            }
+        } else { // down
+
+            if (enemy->posy+1 < BOARD_DIM && 
+                !is_disabled_block(enemy->posx, enemy->posy+1) &&
+                !is_enemy_position(enemy->posx, enemy->posy+1)) {
+                enemy->posy += 1;
+            }
+        }
+    }
+}
+
+static void move_enemies() {
+
+    srand(time(0));
+    int dist_x, dist_y, sig_x, sig_y;
+
+    if (counter%(5-level) == 0)
+    {
+        for (int i = 0; i < AMOUNT_ENEMIES; i++)
+        {
+
+            int decision = rand()%6;
+
+            if (!enemy[i].active) continue;
+            
+            if (decision%6==0 || decision%6==1) {
+
+                dist_x = player.posx-enemy[i].posx;
+                sig_x = dist_x/abs(dist_x);
+                dist_y = player.posy-enemy[i].posy;
+                sig_y = dist_y/abs(dist_y);
+
+                if (dist_x != 0 && dist_y != 0) {
+                    
+                    if (!decision%6==1) move_enemies_aux(&enemy[i], 1, sig_x);
+
+                    else move_enemies_aux(&enemy[i], -1, sig_y);
+                    
+                } else if (dist_x != 0){
+
+                    move_enemies_aux(&enemy[i], 1, sig_x);
+                }
+                else {
+                    move_enemies_aux(&enemy[i], -1, sig_y);
+                }
+                
+            }
+            else if (decision%6==2) move_enemies_aux(&enemy[i], 1, 1);
+            else if (decision%6==3) move_enemies_aux(&enemy[i], 1, -1);
+            else if (decision%6==4) move_enemies_aux(&enemy[i], -1, 1);
+            else if (decision%6==5) move_enemies_aux(&enemy[i], 1, 1);
+        }
+    }
+     
+    
+    
+}
+
 
 /*
 Description: function that draws the radar box and enemy positions
@@ -814,6 +907,11 @@ static void load_enemies() {
        enemy[i].posy = posy;
        enemy[i].active = 1;
 
+       if (level == 3 && i%2 == 0) enemy[i].is_visible = 0;
+       else if (level == 2 && i%3 == 0) enemy[i].is_visible = 0;
+       else enemy[i].is_visible = 1;
+       
+
    }
     
 }
@@ -844,7 +942,10 @@ static void draw_enemies () {
         dest.w = 50;
         dest.h = 50;
 
-        SDL_BlitSurface(enemy_image, &src, screen, &dest);    
+        if (enemy[i].is_visible)
+        {
+            SDL_BlitSurface(enemy_image, &src, screen, &dest); 
+        }   
     }
     
 }
@@ -929,6 +1030,8 @@ int main (int argc, char *args[]) {
 
     while (quit == 0)
     {
+        counter += 1;
+
         //check for new events every frame
 		SDL_PumpEvents();
 
@@ -1038,7 +1141,6 @@ int main (int argc, char *args[]) {
             }
 
             else {
-                printf("GAME OVER");
                 draw_game_over();
             }
 
@@ -1053,8 +1155,7 @@ int main (int argc, char *args[]) {
             // draw the game radar
             draw_radar();
 
-            // draw enemies
-            draw_enemies();
+            
 
             // draw player
             draw_player();
@@ -1078,6 +1179,12 @@ int main (int argc, char *args[]) {
                     draw_bullet(bullet[i].posx, bullet[i].posy);
                 }
             }
+
+            // move enemies function
+            move_enemies();
+
+            // draw enemies
+            draw_enemies();
             
 
 
